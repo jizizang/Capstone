@@ -38,7 +38,8 @@ def clean_data(df, new_data=False):
     
     ''' Columns to keep '''
     
-    columns_to_keep_00=['CASE_STATUS', 'AGENT_REPRESENTING_EMPLOYER', 'FULL_TIME_POSITION', 'PW_WAGE_LEVEL', 'H1B_DEPENDENT', 'WILLFUL_VIOLATOR', 'SUPPORT_H1B', 'LABOR_CON_AGREE', 'WORKSITE_STATE']
+#    columns_to_keep_00=['CASE_STATUS', 'AGENT_REPRESENTING_EMPLOYER', 'FULL_TIME_POSITION', 'PW_WAGE_LEVEL', 'H1B_DEPENDENT', 'WILLFUL_VIOLATOR', 'SUPPORT_H1B', 'LABOR_CON_AGREE', 'WORKSITE_STATE']
+    columns_to_keep_00=['CASE_STATUS', 'AGENT_REPRESENTING_EMPLOYER', 'FULL_TIME_POSITION', 'H1B_DEPENDENT', 'WILLFUL_VIOLATOR', 'SUPPORT_H1B', 'LABOR_CON_AGREE', 'WORKSITE_STATE']
     df=df[columns_to_keep_00]
     
     
@@ -78,14 +79,14 @@ Name: LABOR_CON_AGREE, dtype: int64
     df['WILLFUL_VIOLATOR'] = (df['WILLFUL_VIOLATOR'] == 'Y').astype(int)
     df['FULL_TIME_POSITION'] = (df['FULL_TIME_POSITION'] == 'Y').astype(int)
 
-    ''' too many NAN, dummy? '''
-    df.AGENT_REPRESENTING_EMPLOYER.fillna('Y', inplace=True)
-    df.SUPPORT_H1B.fillna('Y', inplace=True)
-    df.LABOR_CON_AGREE.fillna('Y', inplace=True)
+    ''' too many NAN, dummy!!! '''
+    df.AGENT_REPRESENTING_EMPLOYER.fillna('M', inplace=True)
+    df.SUPPORT_H1B.fillna('M', inplace=True)
+    df.LABOR_CON_AGREE.fillna('M', inplace=True)
     
-    df['AGENT_REPRESENTING_EMPLOYER'] = (df['AGENT_REPRESENTING_EMPLOYER'] == 'Y').astype(int)
-    df['SUPPORT_H1B'] = (df['SUPPORT_H1B'] == 'Y').astype(int)
-    df['LABOR_CON_AGREE'] = (df['LABOR_CON_AGREE'] == 'Y').astype(int)
+#    df['AGENT_REPRESENTING_EMPLOYER'] = (df['AGENT_REPRESENTING_EMPLOYER'] == 'Y').astype(int)
+#    df['SUPPORT_H1B'] = (df['SUPPORT_H1B'] == 'Y').astype(int)
+#    df['LABOR_CON_AGREE'] = (df['LABOR_CON_AGREE'] == 'Y').astype(int)
 
     return df
 
@@ -101,10 +102,22 @@ def create_features_df(df):
     df_dum_ST = pd.get_dummies(df.WORKSITE_STATE)
     df_dum_ST.apply(lambda x: x.value_counts())
     df_dum_ST.columns = map(lambda x: 'STATE_' + str(x), df_dum_ST.columns)
-  
-    df_for_model = pd.concat([df, df_dum_ST], axis=1)
+
+    df_dum_AGENT = pd.get_dummies(df.AGENT_REPRESENTING_EMPLOYER)
+    df_dum_AGENT.apply(lambda x: x.value_counts())
+    df_dum_AGENT.columns = map(lambda x: 'AGENT_' + str(x), df_dum_AGENT.columns)
+    
+    df_dum_SUPPORT = pd.get_dummies(df.SUPPORT_H1B)
+    df_dum_SUPPORT.apply(lambda x: x.value_counts())
+    df_dum_SUPPORT.columns = map(lambda x: 'SUPPORT_' + str(x), df_dum_SUPPORT.columns)
+    
+    df_dum_LABOR = pd.get_dummies(df.LABOR_CON_AGREE)
+    df_dum_LABOR.apply(lambda x: x.value_counts())
+    df_dum_LABOR.columns = map(lambda x: 'LABOR_' + str(x), df_dum_LABOR.columns)
+    
+    df_for_model = pd.concat([df, df_dum_ST, df_dum_AGENT, df_dum_SUPPORT, df_dum_LABOR], axis=1)
    
-    df_for_model.drop(['STATE_CA','WORKSITE_STATE'], inplace=True, axis=1, errors='ignore')
+    df_for_model.drop(['STATE_CA','WORKSITE_STATE','AGENT_REPRESENTING_EMPLOYER','SUPPORT_H1B','LABOR_CON_AGREE','AGENT_M','SUPPORT_M','LABOR_M'], inplace=True, axis=1, errors='ignore')
     
     return df_for_model
 
