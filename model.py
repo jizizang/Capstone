@@ -20,13 +20,12 @@ class Model(object):
         '''
         raw_df = create_df(self.data_path)
         df = clean_data(raw_df, False)
-#        X = create_features_df(df)
-        X=df
+        X = create_features_df(df)
+        y = X.pop('CASE_STATUS').values
         self.columns = X.columns
-        y = df['CASE_STATUS'].values
 #        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.30, random_state=67, stratify=y)
 #        return X_train, X_test, y_train, y_test
-        retun X,y
+        return X,y
 
     def fit(self, X_train, y_train):
         '''

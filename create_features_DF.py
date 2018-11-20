@@ -116,8 +116,9 @@ def create_features_df(df):
     df_dum_LABOR.columns = map(lambda x: 'LABOR_' + str(x), df_dum_LABOR.columns)
     
     df_for_model = pd.concat([df, df_dum_ST, df_dum_AGENT, df_dum_SUPPORT, df_dum_LABOR], axis=1)
-   
-    df_for_model.drop(['STATE_CA','WORKSITE_STATE','AGENT_REPRESENTING_EMPLOYER','SUPPORT_H1B','LABOR_CON_AGREE','AGENT_M','SUPPORT_M','LABOR_M'], inplace=True, axis=1, errors='ignore')
+
+    df_for_model.drop(['STATE_CA','WORKSITE_STATE','AGENT_REPRESENTING_EMPLOYER',
+                       'SUPPORT_H1B','LABOR_CON_AGREE','AGENT_M','SUPPORT_M','LABOR_M'], inplace=True, axis=1, errors='ignore')
     
     return df_for_model
 
