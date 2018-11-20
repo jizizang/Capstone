@@ -20,6 +20,7 @@ class Model(object):
         '''
         raw_df = create_df(self.data_path)
         df = clean_data(raw_df, False)
+#split after clean
         X = create_features_df(df)
         y = X.pop('CASE_STATUS').values
         self.columns = X.columns

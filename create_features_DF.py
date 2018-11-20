@@ -36,37 +36,7 @@ def clean_data(df, new_data=False):
     df['CASE_STATUS'] = (df['CASE_STATUS'] == 'DENIED').astype(int)
     df= df[df.VISA_CLASS == 'H-1B']
     
-    ''' Columns to keep '''
-    
-#    columns_to_keep_00=['CASE_STATUS', 'AGENT_REPRESENTING_EMPLOYER', 'FULL_TIME_POSITION', 'PW_WAGE_LEVEL', 'H1B_DEPENDENT', 'WILLFUL_VIOLATOR', 'SUPPORT_H1B', 'LABOR_CON_AGREE', 'WORKSITE_STATE']
-#    columns_to_keep_01=['CASE_STATUS', 'AGENT_REPRESENTING_EMPLOYER', 'FULL_TIME_POSITION', 'H1B_DEPENDENT', 'WILLFUL_VIOLATOR', 'SUPPORT_H1B', 'LABOR_CON_AGREE', 'WORKSITE_STATE']
 
-    
-    df['per_employer']=df.groupby('EMPLOYER_NAME')['EMPLOYER_NAME'].transform('count')
-    df['per_employer_deny']=df.groupby('EMPLOYER_NAME')['CASE_STATUS'].transform('sum')
-    df['EMPLOYER_RATE']=df['per_employer_deny']/df['per_employer']
-    
-    mask = df.per_employer < 5
-    column_name = 'EMPLOYER_RATE'
-    df.loc[mask, column_name] = df[(df.per_employer < 5)].CASE_STATUS.mean()
-    
-    df['EMPLOYER_RATE'].fillna(df.CASE_STATUS.mean(), inplace=True)
-    
-    
-    df['per_soc']=df.groupby('SOC_NAME')['SOC_NAME'].transform('count')
-    df['per_soc_deny']=df.groupby('SOC_NAME')['CASE_STATUS'].transform('sum')
-    df['SOC_RATE']=df['per_soc_deny']/df['per_soc']
-    
-    mask = df.per_soc < 5
-    column_name = 'SOC_RATE'
-    df.loc[mask, column_name] = df[(df.per_soc < 5)].CASE_STATUS.mean()
-
-
-    
-    columns_to_keep_02=['CASE_STATUS', 'AGENT_REPRESENTING_EMPLOYER', 'FULL_TIME_POSITION', 'H1B_DEPENDENT', 'WILLFUL_VIOLATOR', 'SUPPORT_H1B', 'LABOR_CON_AGREE', 'WORKSITE_STATE', 'EMPLOYER_RATE','SOC_RATE']
-    df=df[columns_to_keep_02]
-    
-    
     '''
 0    533621
 1      7481
@@ -123,6 +93,39 @@ def create_features_df(df):
     
     '''
 
+    ''' Columns to keep '''
+    
+#    columns_to_keep_00=['CASE_STATUS', 'AGENT_REPRESENTING_EMPLOYER', 'FULL_TIME_POSITION', 'PW_WAGE_LEVEL', 'H1B_DEPENDENT', 'WILLFUL_VIOLATOR', 'SUPPORT_H1B', 'LABOR_CON_AGREE', 'WORKSITE_STATE']
+#    columns_to_keep_01=['CASE_STATUS', 'AGENT_REPRESENTING_EMPLOYER', 'FULL_TIME_POSITION', 'H1B_DEPENDENT', 'WILLFUL_VIOLATOR', 'SUPPORT_H1B', 'LABOR_CON_AGREE', 'WORKSITE_STATE']
+
+    
+    df['per_employer']=df.groupby('EMPLOYER_NAME')['EMPLOYER_NAME'].transform('count')
+    df['per_employer_deny']=df.groupby('EMPLOYER_NAME')['CASE_STATUS'].transform('sum')
+    df['EMPLOYER_RATE']=df['per_employer_deny']/df['per_employer']
+    
+    mask = df.per_employer < 5
+    column_name = 'EMPLOYER_RATE'
+    df.loc[mask, column_name] = df[(df.per_employer < 5)].CASE_STATUS.mean()
+    
+    df['EMPLOYER_RATE'].fillna(df.CASE_STATUS.mean(), inplace=True)
+    
+    
+    df['per_soc']=df.groupby('SOC_NAME')['SOC_NAME'].transform('count')
+    df['per_soc_deny']=df.groupby('SOC_NAME')['CASE_STATUS'].transform('sum')
+    df['SOC_RATE']=df['per_soc_deny']/df['per_soc']
+    
+    mask = df.per_soc < 5
+    column_name = 'SOC_RATE'
+    df.loc[mask, column_name] = df[(df.per_soc < 5)].CASE_STATUS.mean()
+
+
+    
+#    columns_to_keep_02=['CASE_STATUS', 'AGENT_REPRESENTING_EMPLOYER', 'FULL_TIME_POSITION', 'H1B_DEPENDENT', 'WILLFUL_VIOLATOR', 'SUPPORT_H1B', 'LABOR_CON_AGREE', 'WORKSITE_STATE', 'EMPLOYER_RATE','SOC_RATE']
+    columns_to_keep_03=['CASE_STATUS', 'AGENT_REPRESENTING_EMPLOYER', 'FULL_TIME_POSITION', 'H1B_DEPENDENT', 'WILLFUL_VIOLATOR', 'SUPPORT_H1B', 'LABOR_CON_AGREE', 'WORKSITE_STATE', 'EMPLOYER_NAME', 'EMPLOYER_RATE', 'SOC_NAME', 'SOC_RATE']
+    df=df[columns_to_keep_03]
+    
+    
+    
     df_dum_ST = pd.get_dummies(df.WORKSITE_STATE,dummy_na=True)
     df_dum_ST.apply(lambda x: x.value_counts())
     df_dum_ST.columns = map(lambda x: 'STATE_' + str(x), df_dum_ST.columns)
