@@ -22,9 +22,6 @@ def clean_data(df, new_data=False):
     OUtput: Formatted Pandas dataframe
     
     '''
-#    '''use most common delivery method for missing values'''
-    
-#    df['delivery_method'].fillna(0, inplace=True)
     
 #    if new_data:
 #        return df
@@ -41,7 +38,7 @@ def clean_data(df, new_data=False):
     
     ''' Columns to keep '''
     
-    columns_to_keep_00=['CASE_STATUS', 'AGENT_REPRESENTING_EMPLOYER', 'FULL_TIME_POSITION', 'PW_WAGE_LEVEL', 'H1B_DEPENDENT', 'WILLFUL_VIOLATOR', 'SUPPORT_H1B', 'LABOR_CON_AGREE']
+    columns_to_keep_00=['CASE_STATUS', 'AGENT_REPRESENTING_EMPLOYER', 'FULL_TIME_POSITION', 'PW_WAGE_LEVEL', 'H1B_DEPENDENT', 'WILLFUL_VIOLATOR', 'SUPPORT_H1B', 'LABOR_CON_AGREE', 'WORKSITE_STATE']
     df=df[columns_to_keep_00]
     
     
@@ -95,39 +92,28 @@ Name: LABOR_CON_AGREE, dtype: int64
 def create_features_df(df):
     
     '''
-    dummy-ize variables: user_type, channels, delivery_method
+    dummy-ize variables: ???
     input: dataframe
-    returns: features dataframe for use in prediction model, warning accrual
-                note warnings accrual used to flag data with insufficient features
-                for predictions
+    returns: features dataframe for use in prediction model
     
     '''
 
-        df_dum_user = pd.get_dummies(df.user_type)
-        df_dum_user.apply(lambda x: x.value_counts())
-        df_dum_user.columns = map(lambda x: 'user_type_' + str(x), df_dum_user.columns)
+    df_dum_ST = pd.get_dummies(df.WORKSITE_STATE)
+    df_dum_ST.apply(lambda x: x.value_counts())
+    df_dum_ST.columns = map(lambda x: 'STATE_' + str(x), df_dum_ST.columns)
+  
+    df_for_model = pd.concat([df, df_dum_ST], axis=1)
    
-        df_dum_channels = pd.get_dummies(df.channels)
-        df_dum_channels.apply(lambda x: x.value_counts())
-        df_dum_channels.columns = map(lambda x: 'channels_' + str(x), df_dum_channels.columns)
-
-        df_dum_delivery = pd.get_dummies(df.delivery_method)
-        df_dum_delivery.apply(lambda x: x.value_counts())
-        df_dum_delivery.columns = map(lambda x: 'delivery_' + str(x), df_dum_delivery.columns)
-
-
-        df_for_model = pd.concat([df_dum_user, df_dum_channels, df_dum_delivery], axis=1)
-   
-        df_for_model.drop(['user_type_103', 'channels_13', 'delivery_3.0'], inplace=True, axis=1, errors='ignore')
+    df_for_model.drop(['STATE_CA','WORKSITE_STATE'], inplace=True, axis=1, errors='ignore')
     
-        return df_for_model
+    return df_for_model
 
 
 if __name__ == '__main__':
     cvs_path = "H-1B_2017.csv"
     new_df = create_df(cvs_path)
     new_df = clean_data(new_df)
-#    get_dummies = create_features_df(new_df)
+    get_dummies = create_features_df(new_df)
     
     
     
