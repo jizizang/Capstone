@@ -2,6 +2,8 @@
 # -*- coding: utf-8 -*-
 
 import pandas as pd
+import matplotlib.pyplot as plt
+import numpy as np
 
 def create_df(data_path):
     '''
@@ -84,13 +86,13 @@ Name: LABOR_CON_AGREE, dtype: int64
 
     return df
 
-def create_features_df(df):
+def create_features_df(df, predict=True):
     
     '''
     dummy-ize variables: ???
     input: dataframe
     returns: features dataframe for use in prediction model
-    
+    predict: bool - is the transformation for prediction or fitting
     '''
 
     ''' Columns to keep '''
@@ -98,33 +100,36 @@ def create_features_df(df):
 #    columns_to_keep_00=['CASE_STATUS', 'AGENT_REPRESENTING_EMPLOYER', 'FULL_TIME_POSITION', 'PW_WAGE_LEVEL', 'H1B_DEPENDENT', 'WILLFUL_VIOLATOR', 'SUPPORT_H1B', 'LABOR_CON_AGREE', 'WORKSITE_STATE']
 #    columns_to_keep_01=['CASE_STATUS', 'AGENT_REPRESENTING_EMPLOYER', 'FULL_TIME_POSITION', 'H1B_DEPENDENT', 'WILLFUL_VIOLATOR', 'SUPPORT_H1B', 'LABOR_CON_AGREE', 'WORKSITE_STATE']
 
+    if not predict:
+        df['per_employer']=df.groupby('EMPLOYER_NAME')['EMPLOYER_NAME'].transform('count')
+        df['per_employer_deny']=df.groupby('EMPLOYER_NAME')['CASE_STATUS'].transform('sum')
+        df['EMPLOYER_RATE']=df['per_employer_deny']/df['per_employer']
     
-    df['per_employer']=df.groupby('EMPLOYER_NAME')['EMPLOYER_NAME'].transform('count')
-    df['per_employer_deny']=df.groupby('EMPLOYER_NAME')['CASE_STATUS'].transform('sum')
-    df['EMPLOYER_RATE']=df['per_employer_deny']/df['per_employer']
+        mask = df.per_employer < 5
+        column_name = 'EMPLOYER_RATE'
+        df.loc[mask, column_name] = df[(df.per_employer < 5)].CASE_STATUS.mean()
     
-    mask = df.per_employer < 5
-    column_name = 'EMPLOYER_RATE'
-    df.loc[mask, column_name] = df[(df.per_employer < 5)].CASE_STATUS.mean()
-    
-    df['EMPLOYER_RATE'].fillna(df.CASE_STATUS.mean(), inplace=True)
+        df['EMPLOYER_RATE'].fillna(df.CASE_STATUS.mean(), inplace=True)
     
     
-    df['per_soc']=df.groupby('SOC_NAME')['SOC_NAME'].transform('count')
-    df['per_soc_deny']=df.groupby('SOC_NAME')['CASE_STATUS'].transform('sum')
-    df['SOC_RATE']=df['per_soc_deny']/df['per_soc']
+        df['per_soc']=df.groupby('SOC_NAME')['SOC_NAME'].transform('count')
+        df['per_soc_deny']=df.groupby('SOC_NAME')['CASE_STATUS'].transform('sum')
+        df['SOC_RATE']=df['per_soc_deny']/df['per_soc']
     
-    mask = df.per_soc < 5
-    column_name = 'SOC_RATE'
-    df.loc[mask, column_name] = df[(df.per_soc < 5)].CASE_STATUS.mean()
+        mask = df.per_soc < 5
+        column_name = 'SOC_RATE'
+        df.loc[mask, column_name] = df[(df.per_soc < 5)].CASE_STATUS.mean()
 
-
-    
+        df_save_em=df[['EMPLOYER_NAME','EMPLOYER_RATE']]
+        df_save_so=df[['SOC_NAME','SOC_RATE']]
+        
 #    columns_to_keep_02=['CASE_STATUS', 'AGENT_REPRESENTING_EMPLOYER', 'FULL_TIME_POSITION', 'H1B_DEPENDENT', 'WILLFUL_VIOLATOR', 'SUPPORT_H1B', 'LABOR_CON_AGREE', 'WORKSITE_STATE', 'EMPLOYER_RATE','SOC_RATE']
-    columns_to_keep_03=['CASE_STATUS', 'AGENT_REPRESENTING_EMPLOYER', 'FULL_TIME_POSITION', 'H1B_DEPENDENT', 'WILLFUL_VIOLATOR', 'SUPPORT_H1B', 'LABOR_CON_AGREE', 'WORKSITE_STATE', 'EMPLOYER_NAME', 'EMPLOYER_RATE', 'SOC_NAME', 'SOC_RATE']
-    df=df[columns_to_keep_03]
+        columns_to_keep_03=['CASE_STATUS', 'AGENT_REPRESENTING_EMPLOYER', 'FULL_TIME_POSITION', 'H1B_DEPENDENT', 'WILLFUL_VIOLATOR', 'SUPPORT_H1B', 'LABOR_CON_AGREE', 'WORKSITE_STATE', 'EMPLOYER_NAME', 'EMPLOYER_RATE', 'SOC_NAME', 'SOC_RATE']
+        df=df[columns_to_keep_03]
     
-    
+    if predict:
+        columns_to_keep_03=['CASE_STATUS', 'AGENT_REPRESENTING_EMPLOYER', 'FULL_TIME_POSITION', 'H1B_DEPENDENT', 'WILLFUL_VIOLATOR', 'SUPPORT_H1B', 'LABOR_CON_AGREE', 'WORKSITE_STATE', 'EMPLOYER_NAME', 'SOC_NAME']
+        df=df[columns_to_keep_03]
     
     df_dum_ST = pd.get_dummies(df.WORKSITE_STATE,dummy_na=True)
     df_dum_ST.apply(lambda x: x.value_counts())
@@ -147,9 +152,63 @@ def create_features_df(df):
     df_for_model.drop(['STATE_CA','WORKSITE_STATE','AGENT_REPRESENTING_EMPLOYER',
                        'SUPPORT_H1B','LABOR_CON_AGREE','AGENT_M','SUPPORT_M','LABOR_M'], inplace=True, axis=1, errors='ignore')
     
-    return df_for_model
+    if predict:
+        return df_for_model
+    return df_for_model, df_save_em, df_save_so
 
+def roc_curve(probabilities, labels):
+    '''
+    INPUT: numpy array, numpy array
+    OUTPUT: list, list, list
 
+    Take a numpy array of the predicted probabilities and a numpy array of the
+    true labels.
+    Return the True Positive Rates, False Positive Rates and Thresholds for the
+    ROC curve.
+    '''
+
+    thresholds = np.sort(probabilities)
+
+    tprs = []
+    fprs = []
+
+    num_positive_cases = sum(labels)
+    num_negative_cases = len(labels) - num_positive_cases
+
+    for threshold in thresholds:
+        # With this threshold, give the prediction of each instance
+        predicted_positive = probabilities >= threshold
+        # Calculate the number of correctly predicted positive cases
+        true_positives = np.sum(predicted_positive * labels)
+        # Calculate the number of incorrectly predicted positive cases
+        false_positives = np.sum(predicted_positive) - true_positives
+        # Calculate the True Positive Rate
+        tpr = true_positives / float(num_positive_cases)
+        # Calculate the False Positive Rate
+        fpr = false_positives / float(num_negative_cases)
+
+        fprs.append(fpr)
+        tprs.append(tpr)
+    
+    return tprs, fprs, thresholds.tolist()
+
+def plot_roc(v_probs, y_test, title, xlabel, ylabel):
+    # ROC
+    tpr, fpr, thresholds = roc_curve(v_probs, y_test)
+
+    plt.hold(True)
+    plt.plot(fpr, tpr)
+
+    # 45 degree line
+    xx = np.linspace(0, 1.0, 20)
+    plt.plot(xx, xx, color='red')
+
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    plt.title(title)
+
+    plt.show()
+    
 if __name__ == '__main__':
     cvs_path = "H-1B_2017.csv"
     new_df = create_df(cvs_path)
