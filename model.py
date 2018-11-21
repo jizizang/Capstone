@@ -34,7 +34,7 @@ class Model(object):
 
     def fit(self, X_train, y_train):
         '''
-        Fit Gradient Boosted Classifier with training data
+        Fit RandomForest Classifier with training data
         '''
 #        self.model = GradientBoostingClassifier(n_estimators=500, max_depth=8, subsample=0.5, max_features='auto', learning_rate=0.05)
         
@@ -60,14 +60,19 @@ if __name__ == '__main__':
     X_train, X_test, y_train, y_test = model.get_data()
 
     
-    ''' df_save_em, df_save_so rejection rate for each employer and SOC name'''
+    ''' 
+    df_save_em, df_save_so rejection rate for each employer and SOC name
+    '''
     X, df_save_em, df_save_so = create_features_df(X_train, predict=False)
     
-    ''' dummy '''
+    ''' 
+    dummy 
+    '''
     X_test=create_features_df(X_test)
     
     ''' add rejection rate for each employer and SOC name to test data
-        replace nan with mean of train???                             '''
+        replace nan with mean of train???                             
+    '''
     group=dict(zip(df_save_em.EMPLOYER_NAME,df_save_em.EMPLOYER_RATE))
     X_test['EMPLOYER_RATE'] = X_test['EMPLOYER_NAME'].map(group, na_action=None)
     X_test.fillna(y_train.mean(), inplace=True)
