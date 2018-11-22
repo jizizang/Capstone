@@ -79,6 +79,7 @@ Name: LABOR_CON_AGREE, dtype: int64
     df.AGENT_REPRESENTING_EMPLOYER.fillna('M', inplace=True)
     df.SUPPORT_H1B.fillna('M', inplace=True)
     df.LABOR_CON_AGREE.fillna('M', inplace=True)
+    df.PW_WAGE_LEVEL.fillna('M', inplace=True)
     
 #    df['AGENT_REPRESENTING_EMPLOYER'] = (df['AGENT_REPRESENTING_EMPLOYER'] == 'Y').astype(int)
 #    df['SUPPORT_H1B'] = (df['SUPPORT_H1B'] == 'Y').astype(int)
@@ -124,11 +125,11 @@ def create_features_df(df, predict=True):
         df_save_so=df[['SOC_NAME','SOC_RATE']]
         
 #    columns_to_keep_02=['CASE_STATUS', 'AGENT_REPRESENTING_EMPLOYER', 'FULL_TIME_POSITION', 'H1B_DEPENDENT', 'WILLFUL_VIOLATOR', 'SUPPORT_H1B', 'LABOR_CON_AGREE', 'WORKSITE_STATE', 'EMPLOYER_RATE','SOC_RATE']
-        columns_to_keep_03=['CASE_STATUS', 'AGENT_REPRESENTING_EMPLOYER', 'FULL_TIME_POSITION', 'H1B_DEPENDENT', 'WILLFUL_VIOLATOR', 'SUPPORT_H1B', 'LABOR_CON_AGREE', 'WORKSITE_STATE', 'EMPLOYER_NAME', 'EMPLOYER_RATE', 'SOC_NAME', 'SOC_RATE']
+        columns_to_keep_03=['CASE_STATUS', 'AGENT_REPRESENTING_EMPLOYER', 'FULL_TIME_POSITION', 'H1B_DEPENDENT', 'WILLFUL_VIOLATOR', 'SUPPORT_H1B', 'LABOR_CON_AGREE', 'WORKSITE_STATE', 'EMPLOYER_NAME', 'EMPLOYER_RATE', 'SOC_NAME', 'SOC_RATE','PW_WAGE_LEVEL']
         df=df[columns_to_keep_03]
     
     if predict:
-        columns_to_keep_03=['CASE_STATUS', 'AGENT_REPRESENTING_EMPLOYER', 'FULL_TIME_POSITION', 'H1B_DEPENDENT', 'WILLFUL_VIOLATOR', 'SUPPORT_H1B', 'LABOR_CON_AGREE', 'WORKSITE_STATE', 'EMPLOYER_NAME', 'SOC_NAME']
+        columns_to_keep_03=['CASE_STATUS', 'AGENT_REPRESENTING_EMPLOYER', 'FULL_TIME_POSITION', 'H1B_DEPENDENT', 'WILLFUL_VIOLATOR', 'SUPPORT_H1B', 'LABOR_CON_AGREE', 'WORKSITE_STATE', 'EMPLOYER_NAME', 'SOC_NAME','PW_WAGE_LEVEL']
         df=df[columns_to_keep_03]
     
     df_dum_ST = pd.get_dummies(df.WORKSITE_STATE,dummy_na=True)
@@ -147,10 +148,14 @@ def create_features_df(df, predict=True):
     df_dum_LABOR.apply(lambda x: x.value_counts())
     df_dum_LABOR.columns = map(lambda x: 'LABOR_' + str(x), df_dum_LABOR.columns)
     
-    df_for_model = pd.concat([df, df_dum_ST, df_dum_AGENT, df_dum_SUPPORT, df_dum_LABOR], axis=1)
+    df_dum_LEVEL = pd.get_dummies(df.PW_WAGE_LEVEL)
+    df_dum_LEVEL.apply(lambda x: x.value_counts())
+    df_dum_LEVEL.columns = map(lambda x: 'LEVEL_' + str(x), df_dum_LEVEL.columns)
+    
+    df_for_model = pd.concat([df, df_dum_ST, df_dum_AGENT, df_dum_SUPPORT, df_dum_LABOR, df_dum_LEVEL], axis=1)
 
     df_for_model.drop(['STATE_CA','WORKSITE_STATE','AGENT_REPRESENTING_EMPLOYER',
-                       'SUPPORT_H1B','LABOR_CON_AGREE','AGENT_M','SUPPORT_M','LABOR_M'], inplace=True, axis=1, errors='ignore')
+                       'SUPPORT_H1B','LABOR_CON_AGREE','AGENT_M','SUPPORT_M','LABOR_M','LEVEL_M','PW_WAGE_LEVEL'], inplace=True, axis=1, errors='ignore')
     
     if predict:
         return df_for_model
@@ -208,6 +213,57 @@ def plot_roc(v_probs, y_test, title, xlabel, ylabel):
     plt.title(title)
 
     plt.show()
+    
+def div_count_pos_neg(X, y):
+    """Helper function to divide X & y into positive and negative classes
+    and counts up the number in each.
+    Parameters
+    ----------
+    X : ndarray - 2D
+    y : ndarray - 1D
+    Returns
+    -------
+    negative_count : Int
+    positive_count : Int
+    X_positives    : ndarray - 2D
+    X_negatives    : ndarray - 2D
+    y_positives    : ndarray - 1D
+    y_negatives    : ndarray - 1D
+    """
+    negatives, positives = y == 0, y == 1
+    negative_count, positive_count = np.sum(negatives), np.sum(positives)
+    X_positives, y_positives = X[positives], y[positives]
+    X_negatives, y_negatives = X[negatives], y[negatives]
+    return negative_count, positive_count, X_positives, \
+           X_negatives, y_positives, y_negatives
+
+
+def undersample(X, y, tp):
+    """Randomly discards negative observations from X & y to achieve the
+    target proportion of positive to negative observations.
+    Parameters
+    ----------
+    X  : ndarray - 2D
+    y  : ndarray - 1D
+    tp : float - range [0.5, 1], target proportion of positive class observations
+    Returns
+    -------
+    X_undersampled : ndarray - 2D
+    y_undersampled : ndarray - 1D
+    """
+    if tp < np.mean(y):
+        return X, y
+    neg_count, pos_count, X_pos, X_neg, y_pos, y_neg = div_count_pos_neg(X, y)
+    negative_sample_rate = (pos_count * (1 - tp)) / (neg_count * tp)
+    negative_keepers = np.random.choice(a=[False, True], size=neg_count,
+                                        p=[1 - negative_sample_rate,
+                                           negative_sample_rate])
+    X_negative_undersampled = X_neg[negative_keepers]
+    y_negative_undersampled = y_neg[negative_keepers]
+    X_undersampled = np.vstack((X_negative_undersampled, X_pos))
+    y_undersampled = np.concatenate((y_negative_undersampled, y_pos))
+
+    return X_undersampled, y_undersampled
     
 if __name__ == '__main__':
     cvs_path = "H-1B_2017.csv"
