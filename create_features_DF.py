@@ -80,6 +80,8 @@ Name: LABOR_CON_AGREE, dtype: int64
     df.SUPPORT_H1B.fillna('M', inplace=True)
     df.LABOR_CON_AGREE.fillna('M', inplace=True)
     df.PW_WAGE_LEVEL.fillna('M', inplace=True)
+
+    df.WAGE_UNIT_OF_PAY.fillna('Week', inplace=True)
     
 #    df['AGENT_REPRESENTING_EMPLOYER'] = (df['AGENT_REPRESENTING_EMPLOYER'] == 'Y').astype(int)
 #    df['SUPPORT_H1B'] = (df['SUPPORT_H1B'] == 'Y').astype(int)
@@ -125,11 +127,11 @@ def create_features_df(df, predict=True):
         df_save_so=df[['SOC_NAME','SOC_RATE']]
         
 #    columns_to_keep_02=['CASE_STATUS', 'AGENT_REPRESENTING_EMPLOYER', 'FULL_TIME_POSITION', 'H1B_DEPENDENT', 'WILLFUL_VIOLATOR', 'SUPPORT_H1B', 'LABOR_CON_AGREE', 'WORKSITE_STATE', 'EMPLOYER_RATE','SOC_RATE']
-        columns_to_keep_03=['CASE_STATUS', 'AGENT_REPRESENTING_EMPLOYER', 'FULL_TIME_POSITION', 'H1B_DEPENDENT', 'WILLFUL_VIOLATOR', 'SUPPORT_H1B', 'LABOR_CON_AGREE', 'WORKSITE_STATE', 'EMPLOYER_NAME', 'EMPLOYER_RATE', 'SOC_NAME', 'SOC_RATE','PW_WAGE_LEVEL']
+        columns_to_keep_03=['CASE_STATUS', 'AGENT_REPRESENTING_EMPLOYER', 'FULL_TIME_POSITION', 'H1B_DEPENDENT', 'WILLFUL_VIOLATOR', 'SUPPORT_H1B', 'LABOR_CON_AGREE', 'WORKSITE_STATE', 'EMPLOYER_NAME', 'EMPLOYER_RATE', 'SOC_NAME', 'SOC_RATE','PW_WAGE_LEVEL','WAGE_UNIT_OF_PAY']
         df=df[columns_to_keep_03]
     
     if predict:
-        columns_to_keep_03=['CASE_STATUS', 'AGENT_REPRESENTING_EMPLOYER', 'FULL_TIME_POSITION', 'H1B_DEPENDENT', 'WILLFUL_VIOLATOR', 'SUPPORT_H1B', 'LABOR_CON_AGREE', 'WORKSITE_STATE', 'EMPLOYER_NAME', 'SOC_NAME','PW_WAGE_LEVEL']
+        columns_to_keep_03=['CASE_STATUS', 'AGENT_REPRESENTING_EMPLOYER', 'FULL_TIME_POSITION', 'H1B_DEPENDENT', 'WILLFUL_VIOLATOR', 'SUPPORT_H1B', 'LABOR_CON_AGREE', 'WORKSITE_STATE', 'EMPLOYER_NAME', 'SOC_NAME','PW_WAGE_LEVEL','WAGE_UNIT_OF_PAY']
         df=df[columns_to_keep_03]
     
     df_dum_ST = pd.get_dummies(df.WORKSITE_STATE,dummy_na=True)
@@ -152,10 +154,14 @@ def create_features_df(df, predict=True):
     df_dum_LEVEL.apply(lambda x: x.value_counts())
     df_dum_LEVEL.columns = map(lambda x: 'LEVEL_' + str(x), df_dum_LEVEL.columns)
     
-    df_for_model = pd.concat([df, df_dum_ST, df_dum_AGENT, df_dum_SUPPORT, df_dum_LABOR, df_dum_LEVEL], axis=1)
+    df_dum_UNIT = pd.get_dummies(df.WAGE_UNIT_OF_PAY)
+    df_dum_UNIT.apply(lambda x: x.value_counts())
+    df_dum_UNIT.columns = map(lambda x: 'UNIT_' + str(x), df_dum_UNIT.columns)
+    
+    df_for_model = pd.concat([df, df_dum_ST, df_dum_AGENT, df_dum_SUPPORT, df_dum_LABOR, df_dum_LEVEL, df_dum_UNIT], axis=1)
 
     df_for_model.drop(['STATE_CA','WORKSITE_STATE','AGENT_REPRESENTING_EMPLOYER',
-                       'SUPPORT_H1B','LABOR_CON_AGREE','AGENT_M','SUPPORT_M','LABOR_M','LEVEL_M','PW_WAGE_LEVEL'], inplace=True, axis=1, errors='ignore')
+                       'SUPPORT_H1B','LABOR_CON_AGREE','AGENT_M','SUPPORT_M','LABOR_M','LEVEL_M','PW_WAGE_LEVEL','WAGE_UNIT_OF_PAY'], inplace=True, axis=1, errors='ignore')
     
     if predict:
         return df_for_model
