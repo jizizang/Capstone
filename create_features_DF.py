@@ -5,17 +5,6 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 
-def create_df(data_path):
-    '''
-    load csv data into pandas dataframe
-    input: file path of csv data
-    output: pandas dataframe
-    '''
-
-    df = pd.read_csv(data_path)
-    
-    return df
-
 def clean_data(df, new_data=False):
 
     '''
@@ -83,6 +72,11 @@ Name: LABOR_CON_AGREE, dtype: int64
 
     df.WAGE_UNIT_OF_PAY.fillna('Week', inplace=True)
     
+    '''
+    None for missing EMPLOYER_NAME and SOC_NAME
+    '''
+    df.EMPLOYER_NAME.fillna('None', inplace=True)
+    df.SOC_NAME.fillna('None', inplace=True)
 #    df['AGENT_REPRESENTING_EMPLOYER'] = (df['AGENT_REPRESENTING_EMPLOYER'] == 'Y').astype(int)
 #    df['SUPPORT_H1B'] = (df['SUPPORT_H1B'] == 'Y').astype(int)
 #    df['LABOR_CON_AGREE'] = (df['LABOR_CON_AGREE'] == 'Y').astype(int)
@@ -127,11 +121,11 @@ def create_features_df(df, predict=True):
         df_save_so=df[['SOC_NAME','SOC_RATE']]
         
 #    columns_to_keep_02=['CASE_STATUS', 'AGENT_REPRESENTING_EMPLOYER', 'FULL_TIME_POSITION', 'H1B_DEPENDENT', 'WILLFUL_VIOLATOR', 'SUPPORT_H1B', 'LABOR_CON_AGREE', 'WORKSITE_STATE', 'EMPLOYER_RATE','SOC_RATE']
-        columns_to_keep_03=['CASE_STATUS', 'AGENT_REPRESENTING_EMPLOYER', 'FULL_TIME_POSITION', 'H1B_DEPENDENT', 'WILLFUL_VIOLATOR', 'SUPPORT_H1B', 'LABOR_CON_AGREE', 'WORKSITE_STATE', 'EMPLOYER_NAME', 'EMPLOYER_RATE', 'SOC_NAME', 'SOC_RATE','PW_WAGE_LEVEL','WAGE_UNIT_OF_PAY']
+        columns_to_keep_03=['CASE_STATUS', 'AGENT_REPRESENTING_EMPLOYER', 'FULL_TIME_POSITION', 'H1B_DEPENDENT', 'WILLFUL_VIOLATOR', 'SUPPORT_H1B', 'LABOR_CON_AGREE', 'WORKSITE_STATE', 'EMPLOYER_NAME', 'EMPLOYER_RATE', 'SOC_NAME', 'SOC_RATE','PW_WAGE_LEVEL','WAGE_UNIT_OF_PAY', 'WAGE_RATE_OF_PAY_FROM']
         df=df[columns_to_keep_03]
     
     if predict:
-        columns_to_keep_03=['CASE_STATUS', 'AGENT_REPRESENTING_EMPLOYER', 'FULL_TIME_POSITION', 'H1B_DEPENDENT', 'WILLFUL_VIOLATOR', 'SUPPORT_H1B', 'LABOR_CON_AGREE', 'WORKSITE_STATE', 'EMPLOYER_NAME', 'SOC_NAME','PW_WAGE_LEVEL','WAGE_UNIT_OF_PAY']
+        columns_to_keep_03=['CASE_STATUS', 'AGENT_REPRESENTING_EMPLOYER', 'FULL_TIME_POSITION', 'H1B_DEPENDENT', 'WILLFUL_VIOLATOR', 'SUPPORT_H1B', 'LABOR_CON_AGREE', 'WORKSITE_STATE', 'EMPLOYER_NAME', 'SOC_NAME','PW_WAGE_LEVEL','WAGE_UNIT_OF_PAY','WAGE_RATE_OF_PAY_FROM']
         df=df[columns_to_keep_03]
     
     df_dum_ST = pd.get_dummies(df.WORKSITE_STATE,dummy_na=True)
@@ -158,10 +152,21 @@ def create_features_df(df, predict=True):
     df_dum_UNIT.apply(lambda x: x.value_counts())
     df_dum_UNIT.columns = map(lambda x: 'UNIT_' + str(x), df_dum_UNIT.columns)
     
-    df_for_model = pd.concat([df, df_dum_ST, df_dum_AGENT, df_dum_SUPPORT, df_dum_LABOR, df_dum_LEVEL, df_dum_UNIT], axis=1)
 
-    df_for_model.drop(['STATE_CA','WORKSITE_STATE','AGENT_REPRESENTING_EMPLOYER',
-                       'SUPPORT_H1B','LABOR_CON_AGREE','AGENT_M','SUPPORT_M','LABOR_M','LEVEL_M','PW_WAGE_LEVEL','WAGE_UNIT_OF_PAY'], inplace=True, axis=1, errors='ignore')
+    unitpay_to_num = {"Year":1, "Hour": 2080, "Month": 12, "Bi-Weekly": 26, "Week": 52}
+    df["MULTIPLIER"] = df["WAGE_UNIT_OF_PAY"].map(unitpay_to_num)
+    df["ACTUAL_SALARY"] = df["WAGE_RATE_OF_PAY_FROM"] * df["MULTIPLIER"]
+    bins = [10000, 20000, 30000, 40000, 50000, 60000, 200000,1000000000]
+    labels = [1,2,3,4,5,6,7]
+    df['binned'] = pd.cut(df['ACTUAL_SALARY'], bins=bins, labels=labels)
+    
+    df_dum_WAGE = pd.get_dummies(df.binned)
+    df_dum_WAGE.apply(lambda x: x.value_counts())
+    df_dum_WAGE.columns = map(lambda x: 'WAGE_' + str(x), df_dum_WAGE.columns)
+    
+    df_for_model = pd.concat([df, df_dum_ST, df_dum_AGENT, df_dum_SUPPORT, df_dum_LABOR, df_dum_LEVEL, df_dum_UNIT, df_dum_WAGE], axis=1)
+
+    df_for_model.drop(['STATE_CA','WORKSITE_STATE','AGENT_REPRESENTING_EMPLOYER','SUPPORT_H1B','LABOR_CON_AGREE','AGENT_M','SUPPORT_M','LABOR_M','LEVEL_M','PW_WAGE_LEVEL','WAGE_UNIT_OF_PAY', 'MULTIPLIER', 'ACTUAL_SALARY','binned','WAGE_RATE_OF_PAY_FROM'], inplace=True, axis=1, errors='ignore')
     
     if predict:
         return df_for_model

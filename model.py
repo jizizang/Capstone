@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-from create_features_DF import create_df, clean_data, create_features_df, roc_curve, plot_roc
+from create_features_DF import clean_data, create_features_df, roc_curve, plot_roc, div_count_pos_neg, undersample
 from sklearn.ensemble import GradientBoostingClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
@@ -13,17 +13,28 @@ class Model(object):
     def __init__(self, data_path):
         self.data_path = data_path
         self.columns = None
-    
+        self.model=None
+        
     def get_data(self):      
         '''
         Create dataframe from cvs file
         Create features set X
         Create targets set y
         '''
-        raw_df = create_df(self.data_path)
+        raw_df=pd.read_csv(self.data_path)
+        
+        '''
+        fillna with mode or new category name and change Y/N to 1/0
+        '''
+        
         df = clean_data(raw_df, False)
-#split after clean
         y = df.CASE_STATUS.values
+    
+        '''
+        split after clean
+        split first then feature engineering, case status is still in df, need it to calculate rejection rate
+        '''
+        
         X_train, X_test, y_train, y_test = train_test_split(df, y, test_size=0.30, random_state=67, stratify=y)
 #        X = create_features_df(df)
 #        y = X.pop('CASE_STATUS').values
@@ -45,7 +56,7 @@ class Model(object):
         '''
         Returns predicted probabilities for not fraud / fraud
         '''
-        return self.model.predict_proba(X_test)[:,1]
+        return self.model.predict_proba(X_test)
     
     def predict(self, X_test):
         '''
@@ -59,6 +70,10 @@ if __name__ == '__main__':
     model = Model(data_path)
     X_train, X_test, y_train, y_test = model.get_data()
 
+    ''' 
+    undersample
+    '''
+#    X_train, y_train = undersample(X_train, y_train, 0.1)
     
     ''' 
     df_save_em, df_save_so rejection rate for each employer and SOC name
