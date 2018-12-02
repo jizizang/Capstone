@@ -9,95 +9,53 @@ def clean_data(df, new_data=False):
 
     '''
     Input:  Pandas dataframe, new_data boolean (False for training data, True for 
-                    data on which to make predictions)
+            new raw data on which to make predictions)
     OUtput: Formatted Pandas dataframe
     
     '''
-    
-#    if new_data:
-#        return df
+#        CASE_STATUS: drop 'CERTIFIED-WITHDRAWN', 'WITHDRAWN'
+#        DENIED=1, CERTIFIED=0 
+#        only keep VISA_CLASS == 'H-1B'    
+#        drop 'E-3 Australian', 'H-1B1 Singapore', 'H-1B1 Chile'  
 
-    ''' CASE_STATUS: drop 'CERTIFIED-WITHDRAWN', 'WITHDRAWN'
-        DENIED=1, CERTIFIED=0 
-        only keep VISA_CLASS == 'H-1B'    
-        drop 'E-3 Australian', 'H-1B1 Singapore', 'H-1B1 Chile'  '''
-    
-    
     df=df[ (df.CASE_STATUS=='DENIED') | (df.CASE_STATUS=='CERTIFIED')]
     df['CASE_STATUS'] = (df['CASE_STATUS'] == 'DENIED').astype(int)
     df= df[df.VISA_CLASS == 'H-1B']
     
-
-    '''
-0    533621
-1      7481
-Name: CASE_STATUS, dtype: int64
-0
-
-Y    309938
-N    148486
-Name: AGENT_REPRESENTING_EMPLOYER, dtype: int64
-82678
-
-Level I      190661
-Level II     158218
-Level III     55184
-Level IV      31105
-Name: PW_WAGE_LEVEL, dtype: int64
-105934
-
-Y    208698
-N      6962
-Name: SUPPORT_H1B, dtype: int64
-325442
-
-Y    205517
-N      9824
-Name: LABOR_CON_AGREE, dtype: int64
-325761'''
-    ''' very few NAN replaced with mode '''
+#    very few NAN, replaced with mode
     df.H1B_DEPENDENT.fillna('N', inplace=True)
     df.WILLFUL_VIOLATOR.fillna('N', inplace=True)
     df.FULL_TIME_POSITION.fillna('Y', inplace=True)
     
+#    Y/N to 1/0
     df['H1B_DEPENDENT'] = (df['H1B_DEPENDENT'] == 'Y').astype(int)
     df['WILLFUL_VIOLATOR'] = (df['WILLFUL_VIOLATOR'] == 'Y').astype(int)
     df['FULL_TIME_POSITION'] = (df['FULL_TIME_POSITION'] == 'Y').astype(int)
 
-    ''' too many NAN, dummy!!! '''
+#    too many NAN, dummy!!!
     df.AGENT_REPRESENTING_EMPLOYER.fillna('M', inplace=True)
     df.SUPPORT_H1B.fillna('M', inplace=True)
     df.LABOR_CON_AGREE.fillna('M', inplace=True)
     df.PW_WAGE_LEVEL.fillna('M', inplace=True)
-
     df.WAGE_UNIT_OF_PAY.fillna('Week', inplace=True)
-    
-    '''
-    None for missing EMPLOYER_NAME and SOC_NAME
-    '''
+
+#    None for missing EMPLOYER_NAME and SOC_NAME
     df.EMPLOYER_NAME.fillna('None', inplace=True)
     df.SOC_NAME.fillna('None', inplace=True)
-#    df['AGENT_REPRESENTING_EMPLOYER'] = (df['AGENT_REPRESENTING_EMPLOYER'] == 'Y').astype(int)
-#    df['SUPPORT_H1B'] = (df['SUPPORT_H1B'] == 'Y').astype(int)
-#    df['LABOR_CON_AGREE'] = (df['LABOR_CON_AGREE'] == 'Y').astype(int)
 
     return df
 
 def create_features_df(df, predict=True):
     
     '''
-    dummy-ize variables: ???
+    dummy-ize variables:
     input: dataframe
     returns: features dataframe for use in prediction model
     predict: bool - is the transformation for prediction or fitting
     '''
 
-    ''' Columns to keep '''
-    
-#    columns_to_keep_00=['CASE_STATUS', 'AGENT_REPRESENTING_EMPLOYER', 'FULL_TIME_POSITION', 'PW_WAGE_LEVEL', 'H1B_DEPENDENT', 'WILLFUL_VIOLATOR', 'SUPPORT_H1B', 'LABOR_CON_AGREE', 'WORKSITE_STATE']
-#    columns_to_keep_01=['CASE_STATUS', 'AGENT_REPRESENTING_EMPLOYER', 'FULL_TIME_POSITION', 'H1B_DEPENDENT', 'WILLFUL_VIOLATOR', 'SUPPORT_H1B', 'LABOR_CON_AGREE', 'WORKSITE_STATE']
-
-    if not predict:
+    if not predict:        #    applied on training data
+        #    calculate rejection rate for each EMPLOYER
         df['per_employer']=df.groupby('EMPLOYER_NAME')['EMPLOYER_NAME'].transform('count')
         df['per_employer_deny']=df.groupby('EMPLOYER_NAME')['CASE_STATUS'].transform('sum')
         df['EMPLOYER_RATE']=df['per_employer_deny']/df['per_employer']
@@ -105,10 +63,9 @@ def create_features_df(df, predict=True):
         mask = df.per_employer < 5
         column_name = 'EMPLOYER_RATE'
         df.loc[mask, column_name] = df[(df.per_employer < 5)].CASE_STATUS.mean()
-    
         df['EMPLOYER_RATE'].fillna(df.CASE_STATUS.mean(), inplace=True)
-    
-    
+
+        #    calculate rejection rate for each SOC
         df['per_soc']=df.groupby('SOC_NAME')['SOC_NAME'].transform('count')
         df['per_soc_deny']=df.groupby('SOC_NAME')['CASE_STATUS'].transform('sum')
         df['SOC_RATE']=df['per_soc_deny']/df['per_soc']
@@ -116,18 +73,21 @@ def create_features_df(df, predict=True):
         mask = df.per_soc < 5
         column_name = 'SOC_RATE'
         df.loc[mask, column_name] = df[(df.per_soc < 5)].CASE_STATUS.mean()
+        df['SOC_RATE'].fillna(df.CASE_STATUS.mean(), inplace=True)
 
+        #    save EMPLOYER_RATE, SOC_RATE table to apply on test data later
         df_save_em=df[['EMPLOYER_NAME','EMPLOYER_RATE']]
         df_save_so=df[['SOC_NAME','SOC_RATE']]
         
-#    columns_to_keep_02=['CASE_STATUS', 'AGENT_REPRESENTING_EMPLOYER', 'FULL_TIME_POSITION', 'H1B_DEPENDENT', 'WILLFUL_VIOLATOR', 'SUPPORT_H1B', 'LABOR_CON_AGREE', 'WORKSITE_STATE', 'EMPLOYER_RATE','SOC_RATE']
+        #    columns to keep
         columns_to_keep_03=['CASE_STATUS', 'AGENT_REPRESENTING_EMPLOYER', 'FULL_TIME_POSITION', 'H1B_DEPENDENT', 'WILLFUL_VIOLATOR', 'SUPPORT_H1B', 'LABOR_CON_AGREE', 'WORKSITE_STATE', 'EMPLOYER_NAME', 'EMPLOYER_RATE', 'SOC_NAME', 'SOC_RATE','PW_WAGE_LEVEL','WAGE_UNIT_OF_PAY', 'WAGE_RATE_OF_PAY_FROM']
         df=df[columns_to_keep_03]
     
-    if predict:
+    if predict:        #    applied on test data, no EMPLOYER_RATE, SOC_RATE
         columns_to_keep_03=['CASE_STATUS', 'AGENT_REPRESENTING_EMPLOYER', 'FULL_TIME_POSITION', 'H1B_DEPENDENT', 'WILLFUL_VIOLATOR', 'SUPPORT_H1B', 'LABOR_CON_AGREE', 'WORKSITE_STATE', 'EMPLOYER_NAME', 'SOC_NAME','PW_WAGE_LEVEL','WAGE_UNIT_OF_PAY','WAGE_RATE_OF_PAY_FROM']
         df=df[columns_to_keep_03]
-    
+
+    #    applied on both trainning and test data!!! dummy    
     df_dum_ST = pd.get_dummies(df.WORKSITE_STATE,dummy_na=True)
     df_dum_ST.apply(lambda x: x.value_counts())
     df_dum_ST.columns = map(lambda x: 'STATE_' + str(x), df_dum_ST.columns)
@@ -152,7 +112,7 @@ def create_features_df(df, predict=True):
     df_dum_UNIT.apply(lambda x: x.value_counts())
     df_dum_UNIT.columns = map(lambda x: 'UNIT_' + str(x), df_dum_UNIT.columns)
     
-
+    #    wage to wage per year based on WAGE_UNIT_OF_PAY and WAGE_RATE_OF_PAY_FROM, then binned to 7 labels
     unitpay_to_num = {"Year":1, "Hour": 2080, "Month": 12, "Bi-Weekly": 26, "Week": 52}
     df["MULTIPLIER"] = df["WAGE_UNIT_OF_PAY"].map(unitpay_to_num)
     df["ACTUAL_SALARY"] = df["WAGE_RATE_OF_PAY_FROM"] * df["MULTIPLIER"]
@@ -164,15 +124,16 @@ def create_features_df(df, predict=True):
     df_dum_WAGE.apply(lambda x: x.value_counts())
     df_dum_WAGE.columns = map(lambda x: 'WAGE_' + str(x), df_dum_WAGE.columns)
     
+    #    merge dummy and drop features that won't be used
     df_for_model = pd.concat([df, df_dum_ST, df_dum_AGENT, df_dum_SUPPORT, df_dum_LABOR, df_dum_LEVEL, df_dum_UNIT, df_dum_WAGE], axis=1)
-
-    df_for_model.drop(['STATE_CA','WORKSITE_STATE','AGENT_REPRESENTING_EMPLOYER','SUPPORT_H1B','LABOR_CON_AGREE','AGENT_M','SUPPORT_M','LABOR_M','LEVEL_M','PW_WAGE_LEVEL','WAGE_UNIT_OF_PAY', 'MULTIPLIER', 'ACTUAL_SALARY','binned','WAGE_RATE_OF_PAY_FROM'], inplace=True, axis=1, errors='ignore')
     
-    if predict:
+df_for_model.drop(['STATE_CA','WORKSITE_STATE','AGENT_REPRESENTING_EMPLOYER','SUPPORT_H1B','LABOR_CON_AGREE','AGENT_M','SUPPORT_M','LABOR_M','LEVEL_M','PW_WAGE_LEVEL','WAGE_UNIT_OF_PAY', 'MULTIPLIER', 'ACTUAL_SALARY','binned','WAGE_RATE_OF_PAY_FROM'], inplace=True, axis=1, errors='ignore')
+    
+    if predict:    #    test data
         return df_for_model
-    return df_for_model, df_save_em, df_save_so
+    return df_for_model, df_save_em, df_save_so    #    return training data with EMPLOYER_RATE, SOC_RATE table
 
-def roc_curve(probabilities, labels):
+def roc_curve(probabilities, labels):    #for ROC curve plot
     '''
     INPUT: numpy array, numpy array
     OUTPUT: list, list, list
@@ -208,7 +169,7 @@ def roc_curve(probabilities, labels):
     
     return tprs, fprs, thresholds.tolist()
 
-def plot_roc(v_probs, y_test, title, xlabel, ylabel):
+def plot_roc(v_probs, y_test, title, xlabel, ylabel):    #    for ROC curve plot
     # ROC
     tpr, fpr, thresholds = roc_curve(v_probs, y_test)
 
@@ -224,57 +185,6 @@ def plot_roc(v_probs, y_test, title, xlabel, ylabel):
     plt.title(title)
 
     plt.show()
-    
-def div_count_pos_neg(X, y):
-    """Helper function to divide X & y into positive and negative classes
-    and counts up the number in each.
-    Parameters
-    ----------
-    X : ndarray - 2D
-    y : ndarray - 1D
-    Returns
-    -------
-    negative_count : Int
-    positive_count : Int
-    X_positives    : ndarray - 2D
-    X_negatives    : ndarray - 2D
-    y_positives    : ndarray - 1D
-    y_negatives    : ndarray - 1D
-    """
-    negatives, positives = y == 0, y == 1
-    negative_count, positive_count = np.sum(negatives), np.sum(positives)
-    X_positives, y_positives = X[positives], y[positives]
-    X_negatives, y_negatives = X[negatives], y[negatives]
-    return negative_count, positive_count, X_positives, \
-           X_negatives, y_positives, y_negatives
-
-
-def undersample(X, y, tp):
-    """Randomly discards negative observations from X & y to achieve the
-    target proportion of positive to negative observations.
-    Parameters
-    ----------
-    X  : ndarray - 2D
-    y  : ndarray - 1D
-    tp : float - range [0.5, 1], target proportion of positive class observations
-    Returns
-    -------
-    X_undersampled : ndarray - 2D
-    y_undersampled : ndarray - 1D
-    """
-    if tp < np.mean(y):
-        return X, y
-    neg_count, pos_count, X_pos, X_neg, y_pos, y_neg = div_count_pos_neg(X, y)
-    negative_sample_rate = (pos_count * (1 - tp)) / (neg_count * tp)
-    negative_keepers = np.random.choice(a=[False, True], size=neg_count,
-                                        p=[1 - negative_sample_rate,
-                                           negative_sample_rate])
-    X_negative_undersampled = X_neg[negative_keepers]
-    y_negative_undersampled = y_neg[negative_keepers]
-    X_undersampled = np.vstack((X_negative_undersampled, X_pos))
-    y_undersampled = np.concatenate((y_negative_undersampled, y_pos))
-
-    return X_undersampled, y_undersampled
     
 if __name__ == '__main__':
     cvs_path = "H-1B_2017.csv"
