@@ -127,7 +127,7 @@ def create_features_df(df, predict=True):
     #    merge dummy and drop features that won't be used
     df_for_model = pd.concat([df, df_dum_ST, df_dum_AGENT, df_dum_SUPPORT, df_dum_LABOR, df_dum_LEVEL, df_dum_UNIT, df_dum_WAGE], axis=1)
     
-df_for_model.drop(['STATE_CA','WORKSITE_STATE','AGENT_REPRESENTING_EMPLOYER','SUPPORT_H1B','LABOR_CON_AGREE','AGENT_M','SUPPORT_M','LABOR_M','LEVEL_M','PW_WAGE_LEVEL','WAGE_UNIT_OF_PAY', 'MULTIPLIER', 'ACTUAL_SALARY','binned','WAGE_RATE_OF_PAY_FROM'], inplace=True, axis=1, errors='ignore')
+    df_for_model.drop(['STATE_CA','WORKSITE_STATE','AGENT_REPRESENTING_EMPLOYER','SUPPORT_H1B','LABOR_CON_AGREE','AGENT_M','SUPPORT_M','LABOR_M','LEVEL_M','PW_WAGE_LEVEL','WAGE_UNIT_OF_PAY', 'MULTIPLIER', 'ACTUAL_SALARY','binned','WAGE_RATE_OF_PAY_FROM'], inplace=True, axis=1, errors='ignore')
     
     if predict:    #    test data
         return df_for_model

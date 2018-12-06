@@ -50,6 +50,8 @@ class Model(object):
     
     def predict(self, X_test):
         '''
+        Input: 
+        
         Returns predicted class ( 0= approvl / 1 = rejection )
         '''
         return self.model.predict(X_test)
